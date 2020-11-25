@@ -2,7 +2,7 @@
 The code for the Flask Api for serving internal data to the frontend application
 
 ## Requirements
-This api is for serving data from a raspberry pi computer with an attached HTU21D temperature and humidity sensor installed.  This code will not function properly unless you have those two things and they are working (I2C is set up and you can read the sensor data).
+This api is for serving data from a raspberry pi computer with an attached [HTU21D](https://learn.sparkfun.com/tutorials/htu21d-humidity-sensor-hookup-guide) temperature and humidity sensor installed.  This code will not function properly unless you have those two things and they are working (I2C is set up and you can read the sensor data).
 
 ## Endpoints
 This describes the endpoints that are exposed via this api
