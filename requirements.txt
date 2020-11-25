@@ -1,0 +1,16 @@
+aniso8601==8.0.0
+click==7.1.2
+flash==1.0.3
+Flask==1.1.2
+Flask-RESTful==0.3.8
+htu21df==0.1.4
+itsdangerous==1.1.0
+Jinja2==2.11.2
+MarkupSafe==1.1.1
+mock==4.0.2
+pkg-resources==0.0.0
+pytz==2020.4
+six==1.15.0
+uptime==3.0.1
+Werkzeug==1.0.1
+wrapt==1.12.1
