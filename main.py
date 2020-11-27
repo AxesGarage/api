@@ -141,6 +141,3 @@ app = Flask(__name__)
 api = Api(app)
 api.add_resource(Sensor, "/sensor")
 api.add_resource(System, "/system")
-
-if __name__ == "__main__":
-    app.run(host='0.0.0.0')
