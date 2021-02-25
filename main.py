@@ -1,10 +1,11 @@
 from flask import Flask
 from flask_restful import Api, Resource
-import htu21
-import os
+from math import log10
+from os import statvfs
 from uptime import boottime
 from datetime import datetime
 from collections import namedtuple
+import htu21
 
 disk_ntuple = namedtuple('partition',  'device mountpoint fstype')
 
@@ -43,8 +44,22 @@ def formatTemperatures(temps):
         'kelvin': { 'value': temps['kelvin'], 'symbol': 'K' }
     } 
 
-def formatHumidity(rh):
-    return {'relative': {'value': rh, 'symbol': 'RH'}}
+def calculateDewPoint(celsius, rh):
+    '''calculate the Dew Point from the current temperateure and relative humidity'''
+    A = 8.1332
+    B = 1762.39
+    C = 235.66
+    rh = min(rh, 100) # rh of over 100 is just a biproduct of the sensor, over 100 is not physically possible
+    if(rh >= 100): 
+        return {'dewPoint': formatTemperatures(convertTemperature(celsius))}
+    PPt = pow(10, (A - (B / (celsius + C))))
+    Td = - ((B / (log10(rh * (PPt/100)) - A)) + C)
+    return {'dewPoint': formatTemperatures(convertTemperature(Td))}
+
+def formatHumidity(celsius, rh):
+    humidity = {'relative': {'value': rh, 'symbol': '%RH'}}
+    humidity.update(calculateDewPoint(celsius, rh))
+    return humidity
 
 def disk_partitions(virtual=False):
     """Return all mountd partitions as a nameduple.
@@ -75,7 +90,7 @@ def disk_partitions(virtual=False):
 
 def getFsStats(path):
     '''Return the disk usage of the path passed '''
-    st = os.statvfs(path)
+    st = statvfs(path)
     free = (st.f_bavail * st.f_frsize)
     total = (st.f_blocks * st.f_frsize)
     used = (st.f_blocks - st.f_bfree) * st.f_frsize
@@ -116,8 +131,8 @@ class Sensor(Resource):
     def get(self):
         data = read_htu21()
         temperatures = convertTemperature(data['temp_c'])
-        
-        return {"temperature": formatTemperatures(temperatures), "humidity": formatHumidity(data['humidity_relative'])}
+        humidity = formatHumidity(data['temp_c'], data['humidity_relative'])
+        return {"temperature": formatTemperatures(temperatures), "humidity": humidity}
 
 class System(Resource):
     def get(self):
@@ -142,5 +157,8 @@ api = Api(app)
 api.add_resource(Sensor, "/sensor")
 api.add_resource(System, "/system")
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0')
+@app.after_request
+def prepare_response(response):
+    response.headers.set('Access-Control-Allow-Origin', '*')
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST')
+    return response
