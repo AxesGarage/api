@@ -2,7 +2,14 @@
 The code for the Flask Api for serving internal data to the frontend application
 
 ## Requirements
-This api is for serving data from a raspberry pi computer with an attached [HTU21D](https://learn.sparkfun.com/tutorials/htu21d-humidity-sensor-hookup-guide) temperature and humidity sensor installed.  This code will not function properly unless you have those two things and they are working (I2C is set up and you can read the sensor data).
+This api is for serving data from a raspberry pi computer with an attached [HTU21D](https://learn.sparkfun.com/tutorials/htu21d-humidity-sensor-hookup-guide) temperature and humidity sensor installed.  This code will not function properly unless you have those two things and they are working (I2C is set up and you can read the sensor data).  As an additional requirement the garage door code requires having HT0740 relays connected to something that will control the garage door via shorting a switch.
+
+### Expected Environment Variables
+```shell
+API_ACCESS_TOKEN= #the token to use to allow access to the garage control method
+API_ADMIN_USER= #the username to allow setting the access token on the client machine via the login
+API_ADMIN_PASS= #the password to allow setting the access token on the client machine via the login
+```
 
 ## Endpoints
 This describes the endpoints that are exposed via this api
