@@ -1,13 +1,35 @@
-from flask import Flask
+from flask import Flask, request, make_response, redirect
 from flask_restful import Api, Resource
 from math import log10
 from os import statvfs
 from uptime import boottime
 from datetime import datetime
 from collections import namedtuple
+from time import sleep
+import os
 import htu21
+from ht0740 import HT0740
 
 disk_ntuple = namedtuple('partition',  'device mountpoint fstype')
+
+ACCESS_TOKEN = os.getenv('API_ACCESS_TOKEN')
+ADMIN_USER = os.getenv('API_ADMIN_USER')
+ADMIN_PASS = os.getenv('API_ADMIN_PASSWORD')
+
+def engage_garage_door(doorNumber):
+    '''Activate the garage door opener relay for the passed door'''
+    try:
+        i2cAddress = 55 + int(doorNumber)
+        switch = HT0740(i2cAddress) # the correct address for the relay must be set when creating the object
+        switch.enable
+        switch.on()
+        sleep(0.5)
+        switch.off()
+        switch.disable
+    except:
+        return False
+    return True
+
 
 def get_cpu_temperature():
     '''Read the temperateure of the CPU returned in degrees Celsius'''
@@ -152,10 +174,41 @@ class System(Resource):
             "partitions": partitions
         }
 
+class Garage(Resource):
+    def get(self):
+        garageNumber = request.args.get("door")
+        access = request.cookies.get('access')
+        if(ACCESS_TOKEN != None and access == ACCESS_TOKEN):
+            success = engage_garage_door(garageNumber)
+            return {
+                "doorNumber": garageNumber,
+                "result": 'success' if success else 'failed'
+            }
+        else:
+            return {
+                "doorNumber": garageNumber,
+                "result": "unauthorized"
+            }
+
+class LogIn(Resource):
+    def post(self):
+        username = request.form.get('username')
+        password = request.form.get('password')
+        if(username == admin_user and password == admin_pass):
+            response = make_response(redirect('/'))
+            response.set_cookie('access', ACCESS_TOKEN)
+            return response
+        else:
+            return {
+                "result": "unauthorized"
+            }
+
 app = Flask(__name__)
 api = Api(app)
 api.add_resource(Sensor, "/sensor")
 api.add_resource(System, "/system")
+api.add_resource(Garage, "/garage")
+api.add_resource(LogIn, "/logInRequest")
 
 @app.after_request
 def prepare_response(response):
