@@ -10,82 +10,91 @@ import os
 import htu21
 from ht0740 import HT0740
 
-disk_ntuple = namedtuple('partition',  'device mountpoint fstype')
+disk_named_tuple = namedtuple('partition', 'device mountpoint fstype')
 
 ACCESS_TOKEN = os.getenv('API_ACCESS_TOKEN')
 ADMIN_USER = os.getenv('API_ADMIN_USER')
-ADMIN_PASS = os.getenv('API_ADMIN_PASSWORD')
+ADMIN_PASS = os.getenv('API_ADMIN_PASS')
 
-def engage_garage_door(doorNumber):
-    '''Activate the garage door opener relay for the passed door'''
+
+def engage_garage_door(door_number):
+    """Activate the garage door opener relay for the passed door"""
+    res = False
     try:
-        i2cAddress = 55 + int(doorNumber)
-        switch = HT0740(i2cAddress) # the correct address for the relay must be set when creating the object
-        switch.enable
+        i2cAddress = 55 + int(door_number)
+        switch = HT0740(i2cAddress)  # the correct address for the relay must be set when creating the object
+        res = switch.enable
         switch.on()
         sleep(0.5)
         switch.off()
-        switch.disable
+        res = switch.disable
     except:
-        return False
-    return True
+        return res
+    return res
 
 
 def get_cpu_temperature():
-    '''Read the temperateure of the CPU returned in degrees Celsius'''
-    tFile = open('/sys/class/thermal/thermal_zone0/temp')
-    temp = float(tFile.read())
-    return temp/1000
+    """Read the temperature of the CPU returned in degrees Celsius"""
+    t_file = open('/sys/class/thermal/thermal_zone0/temp')
+    temp = float(t_file.read())
+    return temp / 1000
+
 
 def read_htu21():
-    '''Read the HTU21's temperature and humdidty sensor values'''
+    """Read the HTU21's temperature and humdidty sensor values"""
     htu = htu21.HTU21()
     return {'temp_c': htu.read_temperature(), 'humidity_relative': htu.read_humidity()}
 
-def formatFloat(floatVal):
-    return round(floatVal, 2)
+
+def formatFloat(float_val):
+    return round(float_val, 2)
+
 
 def convertTemperature(celsius):
-    '''Convert the celsius passed temperature to all 4 major scales'''
-    fahrenheit = ((9.0/5.0) * celsius) + 32
+    """Convert the celsius passed temperature to all 4 major scales"""
+    fahrenheit = ((9.0 / 5.0) * celsius) + 32
     rankine = fahrenheit + 459.67
     kelvin = celsius + 273.15
     return {
         'celsius': celsius,
-        'fahrenheit':fahrenheit,
-        'rankine':rankine,
+        'fahrenheit': fahrenheit,
+        'rankine': rankine,
         'kelvin': kelvin,
     }
 
+
 def formatTemperatures(temps):
-    '''format the tempertaure array returned in convertTemperature() with additional information'''
+    """format the temperature array returned in convertTemperature() with additional information"""
     return {
-        'celsius': { 'value': temps['celsius'], 'symbol': '°C' },
-        'fahrenheit': { 'value': temps['fahrenheit'], 'symbol': '°F' },
-        'rankine': { 'value': temps['rankine'], 'symbol': '°R' },
-        'kelvin': { 'value': temps['kelvin'], 'symbol': 'K' }
-    } 
+        'celsius': {'value': temps['celsius'], 'symbol': '°C'},
+        'fahrenheit': {'value': temps['fahrenheit'], 'symbol': '°F'},
+        'rankine': {'value': temps['rankine'], 'symbol': '°R'},
+        'kelvin': {'value': temps['kelvin'], 'symbol': 'K'}
+    }
+
 
 def calculateDewPoint(celsius, rh):
-    '''calculate the Dew Point from the current temperateure and relative humidity'''
-    A = 8.1332
-    B = 1762.39
-    C = 235.66
-    rh = min(rh, 100) # rh of over 100 is just a biproduct of the sensor, over 100 is not physically possible
-    if(rh >= 100): 
+    """calculate the Dew Point from the current temperature and relative humidity"""
+    a = 8.1332
+    b = 1762.39
+    c = 235.66
+    rh = min(rh, 100)  # rh of over 100 is just a biproduct of the sensor, over 100 is not physically possible
+    if rh >= 100:
         return {'dewPoint': formatTemperatures(convertTemperature(celsius))}
-    PPt = pow(10, (A - (B / (celsius + C))))
-    Td = - ((B / (log10(rh * (PPt/100)) - A)) + C)
-    return {'dewPoint': formatTemperatures(convertTemperature(Td))}
+    pp_t = pow(10, (a - (b / (celsius + c))))
+    t_d = - ((b / (log10(rh * (pp_t / 100)) - a)) + c)
+    return {'dewPoint': formatTemperatures(convertTemperature(t_d))}
+
 
 def formatHumidity(celsius, rh):
     humidity = {'relative': {'value': rh, 'symbol': '%RH'}}
     humidity.update(calculateDewPoint(celsius, rh))
     return humidity
 
+
 def disk_partitions(virtual=False):
-    """Return all mountd partitions as a nameduple.
-    If all == False return phyisical partitions only.
+    """Return all mounted partitions as a nametudple.
+    If all == False return physical partitions only.
     """
     phydevs = []
     f = open("/proc/filesystems", "r")
@@ -106,26 +115,27 @@ def disk_partitions(virtual=False):
             continue
         if device == 'none':
             device = ''
-        ntuple = disk_ntuple(device, mountpoint, fstype)
-        retlist.append(ntuple)
+        named_tuple = disk_named_tuple(device, mountpoint, fstype)
+        retlist.append(named_tuple)
     return retlist
 
+
 def getFsStats(path):
-    '''Return the disk usage of the path passed '''
+    """Return the disk usage of the path passed """
     st = statvfs(path)
     free = (st.f_bavail * st.f_frsize)
     total = (st.f_blocks * st.f_frsize)
     used = (st.f_blocks - st.f_bfree) * st.f_frsize
     try:
-        percent = ret = (float(used) / total) * 100
+        percent = (float(used) / total) * 100
     except ZeroDivisionError:
         percent = 0
     # NB: the percentage is -5% than what shown by df due to
     # reserved blocks that we are currently not considering:
     # http://goo.gl/sWGbH
     return {
-        'mount':path,
-        'usage':{
+        'mount': path,
+        'usage': {
             'free_space': free,
             'used_space': used,
             'total_space': total,
@@ -133,68 +143,77 @@ def getFsStats(path):
         }
     }
 
+
 def generateUptime():
-    '''Generate the system uptime, with boot epoch and time since boot to now'''
+    """Generate the system uptime, with boot epoch and time since boot to now"""
     boot = boottime()
     elapsed = datetime.now() - boot
     elapsed_hours = elapsed.seconds // 3600
     elapsed_seconds = elapsed.seconds - (elapsed_hours * 3600)
     elapsed_minutes = elapsed_seconds // 60
     elapsed_seconds = elapsed_seconds - (elapsed_minutes * 60)
-    return { 
-                "epoch": boot.timestamp(),
-                "days": elapsed.days,
-                "hours": elapsed_hours,
-                "minutes": elapsed_minutes,
-                "seconds": elapsed_seconds,
-            }
+    return {
+        "epoch": boot.timestamp(),
+        "days": elapsed.days,
+        "hours": elapsed_hours,
+        "minutes": elapsed_minutes,
+        "seconds": elapsed_seconds,
+    }
+
 
 class Sensor(Resource):
-    def get(self):
+    @staticmethod
+    def get():
         data = read_htu21()
         temperatures = convertTemperature(data['temp_c'])
         humidity = formatHumidity(data['temp_c'], data['humidity_relative'])
         return {"temperature": formatTemperatures(temperatures), "humidity": humidity}
 
+
 class System(Resource):
-    def get(self):
+    @staticmethod
+    def get():
         cpu_temps = convertTemperature(get_cpu_temperature())
         partitions = dict()
         for part in disk_partitions():
             partitions[part.mountpoint] = getFsStats(part.mountpoint)
             partitions[part.mountpoint]['device'] = part.device
             partitions[part.mountpoint]['fstype'] = part.fstype
-        
+
         # remove the 0 total and used space items from the paritions, nothing interesting to report there, just noise
         partitions = dict(filter(lambda x: x[1]['usage']['total_space'] > 0, partitions.items()))
         partitions = dict(filter(lambda x: x[1]['usage']['used_space'] > 0, partitions.items()))
         return {
-            "cpu": {"temperature": formatTemperatures(cpu_temps) },
+            "cpu": {"temperature": formatTemperatures(cpu_temps)},
             "uptime": generateUptime(),
             "partitions": partitions
         }
 
+
 class Garage(Resource):
-    def get(self):
-        garageNumber = request.args.get("door")
+    @staticmethod
+    def get():
+        garage_number = request.args.get("door")
         access = request.cookies.get('access')
-        if(ACCESS_TOKEN != None and access == ACCESS_TOKEN):
-            success = engage_garage_door(garageNumber)
+        if ACCESS_TOKEN is not None and access == ACCESS_TOKEN:
+            success = engage_garage_door(garage_number)
             return {
-                "doorNumber": garageNumber,
+                "doorNumber": garage_number,
                 "result": 'success' if success else 'failed'
             }
         else:
             return {
-                "doorNumber": garageNumber,
+                "doorNumber": garage_number,
                 "result": "unauthorized"
             }
 
+
 class LogIn(Resource):
-    def post(self):
+    @staticmethod
+    def post():
         username = request.form.get('username')
         password = request.form.get('password')
-        if(username == admin_user and password == admin_pass):
+        if username == ADMIN_USER and password == ADMIN_PASS:
             response = make_response(redirect('/'))
             response.set_cookie('access', ACCESS_TOKEN)
             return response
@@ -203,12 +222,14 @@ class LogIn(Resource):
                 "result": "unauthorized"
             }
 
+
 app = Flask(__name__)
 api = Api(app)
 api.add_resource(Sensor, "/sensor")
 api.add_resource(System, "/system")
 api.add_resource(Garage, "/garage")
 api.add_resource(LogIn, "/logInRequest")
+
 
 @app.after_request
 def prepare_response(response):
