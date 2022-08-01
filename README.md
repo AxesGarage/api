@@ -9,6 +9,11 @@ This api is for serving data from a raspberry pi computer with an attached [HTU2
 API_ACCESS_TOKEN= #the token to use to allow access to the garage control method
 API_ADMIN_USER= #the username to allow setting the access token on the client machine via the login
 API_ADMIN_PASS= #the password to allow setting the access token on the client machine via the login
+
+optional
+
+API_HISTORY_MAX= #how many history points to maintain in the history file (default 1440)
+SLEEP_DURATION= #the duration between read events to update the history file (seconds, defaults to 60)
 ```
 
 ## Endpoints

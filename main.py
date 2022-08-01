@@ -1,21 +1,19 @@
 from flask import Flask, request, make_response, redirect
 from flask_restful import Api, Resource
-from math import log10
 from os import statvfs
 from uptime import boottime
 from datetime import datetime
 from collections import namedtuple
 from time import sleep
 import os
-import htu21
 from ht0740 import HT0740
+from axe.util import Convert, Format, Htu21
 
 disk_named_tuple = namedtuple('partition', 'device mountpoint fstype')
 
 ACCESS_TOKEN = os.getenv('API_ACCESS_TOKEN')
 ADMIN_USER = os.getenv('API_ADMIN_USER')
 ADMIN_PASS = os.getenv('API_ADMIN_PASS')
-
 
 def engage_garage_door(door_number):
     """Activate the garage door opener relay for the passed door"""
@@ -32,65 +30,11 @@ def engage_garage_door(door_number):
         return res
     return res
 
-
 def get_cpu_temperature():
     """Read the temperature of the CPU returned in degrees Celsius"""
     t_file = open('/sys/class/thermal/thermal_zone0/temp')
     temp = float(t_file.read())
     return temp / 1000
-
-
-def read_htu21():
-    """Read the HTU21's temperature and humdidty sensor values"""
-    htu = htu21.HTU21()
-    return {'temp_c': htu.read_temperature(), 'humidity_relative': htu.read_humidity()}
-
-
-def formatFloat(float_val):
-    return round(float_val, 2)
-
-
-def convertTemperature(celsius):
-    """Convert the celsius passed temperature to all 4 major scales"""
-    fahrenheit = ((9.0 / 5.0) * celsius) + 32
-    rankine = fahrenheit + 459.67
-    kelvin = celsius + 273.15
-    return {
-        'celsius': celsius,
-        'fahrenheit': fahrenheit,
-        'rankine': rankine,
-        'kelvin': kelvin,
-    }
-
-
-def formatTemperatures(temps):
-    """format the temperature array returned in convertTemperature() with additional information"""
-    return {
-        'celsius': {'value': temps['celsius'], 'symbol': '°C'},
-        'fahrenheit': {'value': temps['fahrenheit'], 'symbol': '°F'},
-        'rankine': {'value': temps['rankine'], 'symbol': '°R'},
-        'kelvin': {'value': temps['kelvin'], 'symbol': 'K'}
-    }
-
-
-def calculateDewPoint(celsius, rh):
-    """calculate the Dew Point from the current temperature and relative humidity"""
-    a = 8.1332
-    b = 1762.39
-    c = 235.66
-    rh = min(rh, 100)  # rh of over 100 is just a biproduct of the sensor, over 100 is not physically possible
-    if rh >= 100:
-        return {'dewPoint': formatTemperatures(convertTemperature(celsius))}
-    pp_t = pow(10, (a - (b / (celsius + c))))
-    t_d = - ((b / (log10(rh * (pp_t / 100)) - a)) + c)
-    return {'dewPoint': formatTemperatures(convertTemperature(t_d))}
-
-
-def formatHumidity(celsius, rh):
-    humidity = {'relative': {'value': rh, 'symbol': '%RH'}}
-    humidity.update(calculateDewPoint(celsius, rh))
-    return humidity
-
 
 def disk_partitions(virtual=False):
     """Return all mounted partitions as a nametudple.
@@ -119,7 +63,6 @@ def disk_partitions(virtual=False):
         retlist.append(named_tuple)
     return retlist
 
-
 def getFsStats(path):
     """Return the disk usage of the path passed """
     st = statvfs(path)
@@ -143,7 +86,6 @@ def getFsStats(path):
         }
     }
 
-
 def generateUptime():
     """Generate the system uptime, with boot epoch and time since boot to now"""
     boot = boottime()
@@ -160,20 +102,18 @@ def generateUptime():
         "seconds": elapsed_seconds,
     }
 
-
 class Sensor(Resource):
     @staticmethod
     def get():
-        data = read_htu21()
-        temperatures = convertTemperature(data['temp_c'])
-        humidity = formatHumidity(data['temp_c'], data['humidity_relative'])
-        return {"temperature": formatTemperatures(temperatures), "humidity": humidity}
-
+        data = Htu21.read()
+        temperatures = Convert.temperature(data['temp_c'])
+        humidity = Format.humidity(data['temp_c'], max(data['humidity_relative'], 100))
+        return {"temperature": Format.temperatures(temperatures), "humidity": humidity}
 
 class System(Resource):
     @staticmethod
     def get():
-        cpu_temps = convertTemperature(get_cpu_temperature())
+        cpu_temps = Convert.convertTemperature(get_cpu_temperature())
         partitions = dict()
         for part in disk_partitions():
             partitions[part.mountpoint] = getFsStats(part.mountpoint)
@@ -184,11 +124,10 @@ class System(Resource):
         partitions = dict(filter(lambda x: x[1]['usage']['total_space'] > 0, partitions.items()))
         partitions = dict(filter(lambda x: x[1]['usage']['used_space'] > 0, partitions.items()))
         return {
-            "cpu": {"temperature": formatTemperatures(cpu_temps)},
+            "cpu": {"temperature": Format.temperatures(cpu_temps)},
             "uptime": generateUptime(),
             "partitions": partitions
         }
-
 
 class Garage(Resource):
     @staticmethod
@@ -207,7 +146,6 @@ class Garage(Resource):
                 "result": "unauthorized"
             }
 
-
 class LogIn(Resource):
     @staticmethod
     def post():
@@ -221,7 +159,6 @@ class LogIn(Resource):
             return {
                 "result": "unauthorized"
             }
-
 
 app = Flask(__name__)
 api = Api(app)
