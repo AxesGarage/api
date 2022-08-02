@@ -13,7 +13,7 @@ API_ADMIN_PASS= #the password to allow setting the access token on the client ma
 optional
 
 API_HISTORY_MAX= #how many history points to maintain in the history file (default 1440)
-SLEEP_DURATION= #the duration between read events to update the history file (seconds, defaults to 60)
+API_HISTORY_DURATION= #the duration between read events to update the history file (seconds, defaults to 60)
 ```
 
 ## Endpoints
