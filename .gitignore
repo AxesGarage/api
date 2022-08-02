@@ -129,5 +129,5 @@ dmypy.json
 .pyre/
 
 # application
-access.log*
-error.log*
+logs/
+history.json
