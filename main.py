@@ -105,15 +105,16 @@ def generateUptime():
 class Sensor(Resource):
     @staticmethod
     def get():
+        clamp = lambda n, minn, maxn: max(min(maxn, n), minn)
         data = Htu21.read()
         temperatures = Convert.temperature(data['temp_c'])
-        humidity = Format.humidity(data['temp_c'], max(data['humidity_relative'], 100))
+        humidity = Format.humidity(data['temp_c'], clamp(data['humidity_relative'], 0, 100))
         return {"temperature": Format.temperatures(temperatures), "humidity": humidity}
 
 class System(Resource):
     @staticmethod
     def get():
-        cpu_temps = Convert.convertTemperature(get_cpu_temperature())
+        cpu_temps = Convert.temperature(get_cpu_temperature())
         partitions = dict()
         for part in disk_partitions():
             partitions[part.mountpoint] = getFsStats(part.mountpoint)

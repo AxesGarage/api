@@ -1,9 +1,8 @@
-from math import log10
 import json
-from sqlite3 import Timestamp
 import htu21
-from time import time
-from math import floor
+import time 
+import math
+from datetime import datetime
 
 class Convert:
     '''Conversion functions'''
@@ -28,8 +27,8 @@ class Convert:
         b = 1762.39
         c = 235.66
         pp_t = pow(10, (a - (b / (celsius + c))))
-        t_d = - ((b / (log10(rh * (pp_t / 100)) - a)) + c)
-        return {'dewPoint': Format.Temperatures(Convert.convertTemperature(t_d))}
+        t_d = - ((b / (math.log10(rh * (pp_t / 100)) - a)) + c)
+        return {'dewPoint': Format.temperatures(Convert.temperature(t_d))}
 
 class Format:
 
@@ -74,14 +73,15 @@ class Htu21:
 
 class TimeStamp:
     @staticmethod
-    def epoch(time):
-        return floor(time.time())
+    def epoch():
+        return math.floor(time.time())
     
-    def isoFormat(date_time):
-        return date_time.isoFormat()
+    def isoFormat():
+        theDate = datetime.now()
+        return str(theDate.isoformat())
     
-    def timestamps(date_time):
+    def timestamps():
         return {
-            'iso8601': TimeStamp.isoFormat(date_time),
-            'epoch': Timestamp.epoch(time(date_time))
+            'iso8601': TimeStamp.isoFormat(),
+            'epoch': TimeStamp.epoch()
         }
