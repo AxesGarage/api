@@ -7,7 +7,7 @@ from collections import namedtuple
 from time import sleep
 import os
 from ht0740 import HT0740
-from axe.util import Convert, Format, Htu21
+from axe.util import Convert, Format, Htu21, File
 
 disk_named_tuple = namedtuple('partition', 'device mountpoint fstype')
 
@@ -111,6 +111,17 @@ class Sensor(Resource):
         humidity = Format.humidity(data['temp_c'], clamp(data['humidity_relative'], 0, 100))
         return {"temperature": Format.temperatures(temperatures), "humidity": humidity}
 
+class History(Resource):
+    @staticmethod
+    def get(count_request=-1):
+        data = File.read('history.json')
+        count_request = int(count_request)
+        if(count_request == -1):
+            return data
+        data['data'] = data['data'][-count_request:]
+        data['count'] = len(data['data'])
+        return data
+
 class System(Resource):
     @staticmethod
     def get():
@@ -164,6 +175,7 @@ class LogIn(Resource):
 app = Flask(__name__)
 api = Api(app)
 api.add_resource(Sensor, "/sensor")
+api.add_resource(History, "/history", '/history/<count_request>')
 api.add_resource(System, "/system")
 api.add_resource(Garage, "/garage")
 api.add_resource(LogIn, "/logInRequest")
