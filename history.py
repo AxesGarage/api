@@ -78,7 +78,7 @@ while True:
     data['data'].append(update_data)
     
     if(len(data['data']) > MAX_COUNT):
-        data['data'] = data['data'][:-1]
+        del data['data'][0]
 
     data['count'] = len(data['data'])
     timestamps = Util.TimeStamp.timestamps()
