@@ -69,7 +69,24 @@ class Htu21:
     def read():
         """Read the HTU21's temperature and humidity sensor values"""
         htu = htu21.HTU21()
-        return {'temp_c': htu.read_temperature(), 'humidity_relative': htu.read_humidity()}
+        count = 0
+        finished = False
+        temp = 0
+        humid = 0
+        while not finished:
+            try:
+                count += 1
+                temp = htu.read_temperature()
+                humid = htu.read_humidity()
+                finished = True
+            except OSError:
+                # this is due to two processes trying to read the resource at once
+                time.sleep(0.1)
+            finally:
+                if count == 5:
+                    finished = True
+
+        return {'temp_c': temp, 'humidity_relative': humid}
 
 class TimeStamp:
     @staticmethod
